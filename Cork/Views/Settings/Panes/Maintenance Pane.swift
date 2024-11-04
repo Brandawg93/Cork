@@ -14,8 +14,6 @@ struct MaintenancePane: View
     @AppStorage("default_shouldDeleteDownloads") var default_shouldDeleteDownloads: Bool = true
     @AppStorage("default_shouldPerformHealthCheck") var default_shouldPerformHealthCheck: Bool = false
 
-    @State var maintenanceStepsDummy: MaintenanceSteps = .ready
-
     var body: some View
     {
         SettingsPaneTemplate
@@ -29,7 +27,6 @@ struct MaintenancePane: View
                     shouldPurgeCache: $default_shouldPurgeCache,
                     shouldDeleteDownloads: $default_shouldDeleteDownloads,
                     shouldPerformHealthCheck: $default_shouldPerformHealthCheck,
-                    maintenanceSteps: $maintenanceStepsDummy,
                     isShowingControlButtons: false,
                     forcedOptions: false,
                     enablePadding: false

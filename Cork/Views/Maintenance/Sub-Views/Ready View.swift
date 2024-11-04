@@ -14,13 +14,15 @@ struct MaintenanceReadyView: View
     @AppStorage("default_shouldPurgeCache") var default_shouldPurgeCache: Bool = true
     @AppStorage("default_shouldDeleteDownloads") var default_shouldDeleteDownloads: Bool = true
     @AppStorage("default_shouldPerformHealthCheck") var default_shouldPerformHealthCheck: Bool = false
+    
+    @EnvironmentObject var navigationManager: MaintenanceView.MaintenanceNavigationManager
+    
+    @Environment(\.dismiss) var dismiss: DismissAction
 
     @Binding var shouldUninstallOrphans: Bool
     @Binding var shouldPurgeCache: Bool
     @Binding var shouldDeleteDownloads: Bool
     @Binding var shouldPerformHealthCheck: Bool
-
-    @Binding var maintenanceSteps: MaintenanceSteps
 
     @State var isShowingControlButtons: Bool
 
@@ -30,80 +32,83 @@ struct MaintenanceReadyView: View
 
     var body: some View
     {
-        SheetWithTitle(title: "maintenance.title")
+        VStack(alignment: .leading, spacing: 10)
         {
-            VStack(alignment: .leading, spacing: 10)
+            Form
             {
-                Form
+                LabeledContent("maintenance.steps.packages")
                 {
-                    LabeledContent("maintenance.steps.packages")
+                    VStack(alignment: .leading)
                     {
-                        VStack(alignment: .leading)
+                        Toggle(isOn: $shouldUninstallOrphans)
                         {
-                            Toggle(isOn: $shouldUninstallOrphans)
-                            {
-                                Text("maintenance.steps.packages.uninstall-orphans")
-                            }
-                        }
-                    }
-
-                    LabeledContent("maintenance.steps.downloads")
-                    {
-                        VStack(alignment: .leading)
-                        {
-                            Toggle(isOn: $shouldPurgeCache)
-                            {
-                                Text("maintenance.steps.downloads.purge-cache")
-                            }
-                            Toggle(isOn: $shouldDeleteDownloads)
-                            {
-                                Text("maintenance.steps.downloads.delete-cached-downloads")
-                            }
-                        }
-                    }
-
-                    LabeledContent("maintenance.steps.other")
-                    {
-                        Toggle(isOn: $shouldPerformHealthCheck)
-                        {
-                            Text("maintenance.steps.other.health-check")
+                            Text("maintenance.steps.packages.uninstall-orphans")
                         }
                     }
                 }
-
-                if isShowingControlButtons
+                
+                LabeledContent("maintenance.steps.downloads")
                 {
-                    HStack
+                    VStack(alignment: .leading)
                     {
-                        DismissSheetButton()
-
-                        Spacer()
-
-                        Button
+                        Toggle(isOn: $shouldPurgeCache)
                         {
-                            AppConstants.shared.logger.debug("Start")
-
-                            maintenanceSteps = .maintenanceRunning
-                        } label: {
-                            Text("maintenance.steps.start")
+                            Text("maintenance.steps.downloads.purge-cache")
                         }
-                        .keyboardShortcut(.defaultAction)
-                        .disabled(isStartDisabled)
+                        Toggle(isOn: $shouldDeleteDownloads)
+                        {
+                            Text("maintenance.steps.downloads.delete-cached-downloads")
+                        }
                     }
-                    // .padding(.top)
+                }
+                
+                LabeledContent("maintenance.steps.other")
+                {
+                    Toggle(isOn: $shouldPerformHealthCheck)
+                    {
+                        Text("maintenance.steps.other.health-check")
+                    }
                 }
             }
-            .onAppear
+            .toolbar
             {
-                if !forcedOptions
+                ToolbarItem(placement: .cancellationAction)
                 {
-                    /// Replace the provided values with those from AppStorage
-                    /// I have to do this because I don't want the settings in the sheet itself to affect those in the defaults
-                    shouldUninstallOrphans = default_shouldUninstallOrphans
-                    shouldPurgeCache = default_shouldPurgeCache
-                    shouldDeleteDownloads = default_shouldDeleteDownloads
-                    shouldPerformHealthCheck = default_shouldPerformHealthCheck
+                    Button
+                    {
+                        dismiss()
+                    } label: {
+                        Text("action.cancel")
+                    }
+                    .keyboardShortcut(.cancelAction)
                 }
+                
+                ToolbarItem(placement: .primaryAction)
+                {
+                    Button
+                    {
+                        AppConstants.shared.logger.debug("Start")
+                        
+                        navigationManager.navigate(to: .maintenanceRunning)
+                    } label: {
+                        Text("maintenance.steps.start")
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(isStartDisabled)
+                }
+            }
+            .navigationTitle("maintenance.title")
+        }
+        .onAppear
+        {
+            if !forcedOptions
+            {
+                /// Replace the provided values with those from AppStorage
+                /// I have to do this because I don't want the settings in the sheet itself to affect those in the defaults
+                shouldUninstallOrphans = default_shouldUninstallOrphans
+                shouldPurgeCache = default_shouldPurgeCache
+                shouldDeleteDownloads = default_shouldDeleteDownloads
+                shouldPerformHealthCheck = default_shouldPerformHealthCheck
             }
         }
         .if(enablePadding, transform: { viewProxy in

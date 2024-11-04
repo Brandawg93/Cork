@@ -7,17 +7,27 @@
 
 import SwiftUI
 
-enum MaintenanceSteps
+enum MaintenanceSteps: Hashable
 {
     case ready, maintenanceRunning, finished
 }
 
 struct MaintenanceView: View
 {
+    class MaintenanceNavigationManager: ObservableObject
+    {
+        @Published var navigationPath: NavigationPath = .init()
+
+        func navigate(to screen: MaintenanceSteps)
+        {
+            self.navigationPath.append(screen)
+        }
+    }
+
     @EnvironmentObject var brewData: BrewDataStorage
     @EnvironmentObject var appState: AppState
 
-    @State var maintenanceSteps: MaintenanceSteps = .ready
+    @StateObject var navigationManager: MaintenanceNavigationManager = .init()
 
     @State var shouldPurgeCache: Bool = true
     @State var shouldDeleteDownloads: Bool = true
@@ -38,47 +48,57 @@ struct MaintenanceView: View
 
     var body: some View
     {
-        VStack(alignment: .leading, spacing: 10)
+        NavigationStack(path: $navigationManager.navigationPath)
         {
-            switch maintenanceSteps
-            {
-            case .ready:
-                MaintenanceReadyView(
-                    shouldUninstallOrphans: $shouldUninstallOrphans,
-                    shouldPurgeCache: $shouldPurgeCache,
-                    shouldDeleteDownloads: $shouldDeleteDownloads,
-                    shouldPerformHealthCheck: $shouldPerformHealthCheck,
-                    maintenanceSteps: $maintenanceSteps,
-                    isShowingControlButtons: true,
-                    forcedOptions: forcedOptions!
-                )
-
-            case .maintenanceRunning:
-                MaintenanceRunningView(
-                    shouldUninstallOrphans: shouldUninstallOrphans,
-                    shouldPurgeCache: shouldPurgeCache,
-                    shouldDeleteDownloads: shouldDeleteDownloads,
-                    shouldPerformHealthCheck: shouldPerformHealthCheck,
-                    numberOfOrphansRemoved: $numberOfOrphansRemoved,
-                    packagesHoldingBackCachePurge: $packagesHoldingBackCachePurge,
-                    reclaimedSpaceAfterCachePurge: $reclaimedSpaceAfterCachePurge,
-                    brewHealthCheckFoundNoProblems: $brewHealthCheckFoundNoProblems,
-                    maintenanceSteps: $maintenanceSteps
-                )
-
-            case .finished:
-                MaintenanceFinishedView(
-                    shouldUninstallOrphans: shouldUninstallOrphans,
-                    shouldPurgeCache: shouldPurgeCache,
-                    shouldDeleteDownloads: shouldDeleteDownloads,
-                    shouldPerformHealthCheck: shouldPerformHealthCheck,
-                    packagesHoldingBackCachePurge: packagesHoldingBackCachePurge,
-                    numberOfOrphansRemoved: numberOfOrphansRemoved,
-                    reclaimedSpaceAfterCachePurge: reclaimedSpaceAfterCachePurge,
-                    brewHealthCheckFoundNoProblems: brewHealthCheckFoundNoProblems,
-                    maintenanceFoundNoProblems: $maintenanceFoundNoProblems
-                )
+            MaintenanceReadyView(
+                shouldUninstallOrphans: $shouldUninstallOrphans,
+                shouldPurgeCache: $shouldPurgeCache,
+                shouldDeleteDownloads: $shouldDeleteDownloads,
+                shouldPerformHealthCheck: $shouldPerformHealthCheck,
+                isShowingControlButtons: true,
+                forcedOptions: forcedOptions!
+            )
+            .navigationDestination(for: MaintenanceSteps.self)
+            { step in
+                switch step
+                {
+                case .maintenanceRunning:
+                    MaintenanceRunningView(
+                        shouldUninstallOrphans: shouldUninstallOrphans,
+                        shouldPurgeCache: shouldPurgeCache,
+                        shouldDeleteDownloads: shouldDeleteDownloads,
+                        shouldPerformHealthCheck: shouldPerformHealthCheck,
+                        numberOfOrphansRemoved: $numberOfOrphansRemoved,
+                        packagesHoldingBackCachePurge: $packagesHoldingBackCachePurge,
+                        reclaimedSpaceAfterCachePurge: $reclaimedSpaceAfterCachePurge,
+                        brewHealthCheckFoundNoProblems: $brewHealthCheckFoundNoProblems
+                    )
+                    .toolbar(.hidden, for: .windowToolbar)
+                case .finished:
+                    MaintenanceFinishedView(
+                        shouldUninstallOrphans: shouldUninstallOrphans,
+                        shouldPurgeCache: shouldPurgeCache,
+                        shouldDeleteDownloads: shouldDeleteDownloads,
+                        shouldPerformHealthCheck: shouldPerformHealthCheck,
+                        packagesHoldingBackCachePurge: packagesHoldingBackCachePurge,
+                        numberOfOrphansRemoved: numberOfOrphansRemoved,
+                        reclaimedSpaceAfterCachePurge: reclaimedSpaceAfterCachePurge,
+                        brewHealthCheckFoundNoProblems: brewHealthCheckFoundNoProblems,
+                        maintenanceFoundNoProblems: $maintenanceFoundNoProblems
+                    )
+                    .toolbar(.hidden, for: .windowToolbar)
+                default:
+                    MaintenanceReadyView(
+                        shouldUninstallOrphans: $shouldUninstallOrphans,
+                        shouldPurgeCache: $shouldPurgeCache,
+                        shouldDeleteDownloads: $shouldDeleteDownloads,
+                        shouldPerformHealthCheck: $shouldPerformHealthCheck,
+                        isShowingControlButtons: true,
+                        forcedOptions: forcedOptions!
+                    )
+                }
             }
         }
+        .environmentObject(navigationManager)
     }
 }

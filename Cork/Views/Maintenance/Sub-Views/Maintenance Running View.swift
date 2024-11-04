@@ -12,6 +12,7 @@ struct MaintenanceRunningView: View
 {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var brewData: BrewDataStorage
+    @EnvironmentObject var navigationManager: MaintenanceView.MaintenanceNavigationManager
 
     @State var currentMaintenanceStepText: LocalizedStringKey = "maintenance.step.initial"
 
@@ -24,7 +25,6 @@ struct MaintenanceRunningView: View
     @Binding var packagesHoldingBackCachePurge: [String]
     @Binding var reclaimedSpaceAfterCachePurge: Int
     @Binding var brewHealthCheckFoundNoProblems: Bool
-    @Binding var maintenanceSteps: MaintenanceSteps
 
     var body: some View
     {
@@ -111,7 +111,7 @@ struct MaintenanceRunningView: View
                         AppConstants.shared.logger.info("Will not perform health check")
                     }
 
-                    maintenanceSteps = .finished
+                    navigationManager.navigate(to: .finished)
                 }
         }
         .padding()
