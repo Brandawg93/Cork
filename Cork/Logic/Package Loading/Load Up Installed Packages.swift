@@ -35,7 +35,9 @@ extension BrewDataStorage
         do
         {
             return try await self.loadInstalledPackagesFromFolder(
-                packageTypeToLoad: packageTypeToLoad)
+                packageTypeToLoad: packageTypeToLoad,
+                appState: appState
+            )
         }
         catch let packageLoadingError
         {
@@ -47,7 +49,7 @@ extension BrewDataStorage
                 appState.showAlert(
                     errorToShow: .couldNotLoadAnyPackages(packageLoadingError))
             case .failedWhileLoadingCertainPackage(
-                let offendingPackage, let offendingPackageURL, let failureReason
+                let offendingPackage, let offendingPackageURL, let failureReason, let associatedError
             ):
                 appState.showAlert(
                     errorToShow: .couldNotLoadCertainPackage(
@@ -70,11 +72,13 @@ extension BrewDataStorage
     }
 }
 
+// MARK: - Helper Functions
 private extension BrewDataStorage
 {
     /// Load packages from disk, and convert them into ``BrewPackage``s
     func loadInstalledPackagesFromFolder(
-        packageTypeToLoad: PackageType
+        packageTypeToLoad: PackageType,
+        appState: AppState
     ) async throws(PackageLoadingError) -> Set<BrewPackage>?
     {
         do
@@ -150,6 +154,11 @@ private extension BrewDataStorage
             /// Gets URL to installed versions of a package provided as ``packageURL``
             /// `/opt/homebrew/Cellar/cmake/3.30.5`, `/opt/homebrew/Cellar/cmake/3.30.4`
             let versionURLs: [URL] = try getContentsOfFolder(targetFolder: packageURL, options: [.skipsHiddenFiles])
+            
+            guard !versionURLs.isEmpty else
+            {
+                throw PackageLoadingError.packageDoesNotHaveAnyVersionsInstalled(packageName)
+            }
 
             /// Gets the name of the version, which at this stage is the last path component of the `versionURLs` URL
             let versionNamesForPackage: [String] = versionURLs.map
@@ -177,15 +186,15 @@ private extension BrewDataStorage
                 switch intentionalInstallationDiscoveryError
                 {
                 case .failedToDetermineMostRelevantVersion(let packageURL):
-                    throw PackageLoadingError.failedWhileLoadingCertainPackage(packageName, packageURL, failureReason: String(localized: "error.package-loading.could-not-load-version-to-check-from-available-versions"))
+                    throw PackageLoadingError.failedWhileLoadingCertainPackage(packageName, packageURL, failureReason: String(localized: "error.package-loading.could-not-load-version-to-check-from-available-versions"), associatedError: intentionalInstallationDiscoveryError)
                 case .failedToReadInstallationRecepit(let packageURL):
-                    throw PackageLoadingError.failedWhileLoadingCertainPackage(packageName, packageURL, failureReason: String(localized: "error.package-loading.could-not-convert-contents-of-install-receipt-to-data"))
+                    throw PackageLoadingError.failedWhileLoadingCertainPackage(packageName, packageURL, failureReason: String(localized: "error.package-loading.could-not-convert-contents-of-install-receipt-to-data"), associatedError: intentionalInstallationDiscoveryError)
                 case .failedToParseInstallationReceipt(let packageURL):
-                    throw PackageLoadingError.failedWhileLoadingCertainPackage(packageName, packageURL, failureReason: String(localized: "error.package-loading.could-not-decode-installa-receipt"))
+                    throw PackageLoadingError.failedWhileLoadingCertainPackage(packageName, packageURL, failureReason: String(localized: "error.package-loading.could-not-decode-installa-receipt"), associatedError: intentionalInstallationDiscoveryError)
                 case .installationReceiptMissingCompletely(let packageURL):
-                    throw PackageLoadingError.failedWhileLoadingCertainPackage(packageName, packageURL, failureReason: String(localized: "error.package-loading.missing-install-receipt"))
+                    throw PackageLoadingError.failedWhileLoadingCertainPackage(packageName, packageURL, failureReason: String(localized: "error.package-loading.missing-install-receipt"), associatedError: intentionalInstallationDiscoveryError)
                 case .unexpectedFolderName(let packageURL):
-                    throw PackageLoadingError.failedWhileLoadingCertainPackage(packageName, packageURL, failureReason: String(localized: "error.package-loading.unexpected-folder-name"))
+                    throw PackageLoadingError.failedWhileLoadingCertainPackage(packageName, packageURL, failureReason: String(localized: "error.package-loading.unexpected-folder-name"), associatedError: intentionalInstallationDiscoveryError)
                 }
             }
         }
@@ -193,7 +202,7 @@ private extension BrewDataStorage
         {
             AppConstants.shared.logger.error("Failed while loading package \(packageURL.lastPathComponent, privacy: .public): \(loadingError.localizedDescription)")
 
-            throw .failedWhileLoadingCertainPackage(packageURL.lastPathComponent, packageURL, failureReason: loadingError.localizedDescription)
+            throw .failedWhileLoadingCertainPackage(packageURL.lastPathComponent, packageURL, failureReason: loadingError.localizedDescription, associatedError: nil)
         }
     }
 }

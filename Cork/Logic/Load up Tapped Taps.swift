@@ -13,7 +13,11 @@ func loadUpTappedTaps() async -> [BrewTap]
 {
     var finalAvailableTaps: [BrewTap] = .init()
 
-    let contentsOfTapFolder: [URL] = try! getContentsOfFolder(targetFolder: AppConstants.shared.tapPath, options: .skipsHiddenFiles)
+    var contentsOfTapFolder: [URL] {
+        let rawContents: [URL]? = try? getContentsOfFolder(targetFolder: AppConstants.shared.tapPath, options: .skipsHiddenFiles)
+        
+        return rawContents ?? .init()
+    }
 
     AppConstants.shared.logger.debug("Contents of tap folder: \(contentsOfTapFolder)")
 
